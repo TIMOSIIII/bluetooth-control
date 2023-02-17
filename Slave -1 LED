@@ -1,0 +1,61 @@
+// 블루투스 , 코딩 , 슬레이브 1 , LED 코딩 
+
+
+
+#include <NewPing.h>
+#include <SoftwareSerial.h>
+SoftwareSerial bluetooth(4,5);
+#define interruptPin 3
+#define LED_PIN1  8
+#define LED_PIN2  9 
+#define LED_PIN3  10 
+#define LED_PIN4  11
+#define LED_PIN5  12
+void setup() {
+  Serial.begin(9600); 
+  bluetooth.begin(9600);
+  Serial.println("Enter AT Commands: ");
+  pinMode(LED_PIN1,OUTPUT);
+  pinMode(LED_PIN2,OUTPUT);
+  pinMode(LED_PIN3,OUTPUT);
+  pinMode(LED_PIN4,OUTPUT);
+  pinMode(LED_PIN5,OUTPUT);
+}
+
+void interrupt_handler() {
+digitalWrite(LED_PIN1, LOW);
+digitalWrite(LED_PIN2, LOW);
+digitalWrite(LED_PIN3, LOW);
+digitalWrite(LED_PIN4, LOW);
+digitalWrite(LED_PIN5, LOW);
+delay(100);
+/*
+digitalWrite(LED_PIN1, HIGH);
+digitalWrite(LED_PIN2, HIGH);
+digitalWrite(LED_PIN3, HIGH);
+digitalWrite(LED_PIN4, HIGH);
+digitalWrite(LED_PIN5, HIGH);
+*/
+}
+
+void loop() {
+digitalWrite(LED_PIN1, HIGH);
+digitalWrite(LED_PIN2, HIGH);
+digitalWrite(LED_PIN3, HIGH);
+digitalWrite(LED_PIN4, HIGH);
+digitalWrite(LED_PIN5, HIGH);
+delay(1000);  
+digitalWrite(LED_PIN1, LOW);
+digitalWrite(LED_PIN2, LOW);
+digitalWrite(LED_PIN3, LOW);
+digitalWrite(LED_PIN4, LOW);
+digitalWrite(LED_PIN5, LOW);
+if (bluetooth.available()) {  // 여기서 안들어가면 그럴 수도 있음
+bluetooth.write(Serial.read());
+char c = (char)bluetooth.read();
+Serial.write(c);
+attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);
+}
+if (Serial.available()){
+Serial.write(bluetooth.read());  
+}}
