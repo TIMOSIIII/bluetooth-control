@@ -1,0 +1,64 @@
+# bluetooth audio python
+
+import subprocess
+import bluetooth
+import signal
+
+# 현재 재생중인 프로세스 종료 함수
+def stop_process():
+    subprocess.call("sudo pkill mpg321", shell=True)
+
+# Bluetooth 스피커 매칭 및 오디오 파일 재생 함수
+def play_audio(file_path):
+    subprocess.call("sudo bluetoothctl connect XX:XX:XX:XX:XX:XX", shell=True)  # Bluetooth 스피커 연결
+    subprocess.call("sudo apt-get install mpg321", shell=True)  # mpg321 설치
+    subprocess.call(f"mpg321 {file_path}", shell=True)  # 오디오 파일 재생
+
+# 마스터 라즈베리파이로부터 Bluetooth 스피커 연결 및 오디오 파일 재생 명령 수신
+def receive_commands():
+    server_socket=bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+    port = 1
+    server_socket.bind(("",port))
+    server_socket.listen(1)
+    client_socket,address = server_socket.accept()
+    print("Accepted connection from",address)
+
+    while True:
+    # 음악을 바꾸는 기능 한 5가지에서 10가지 정도 추가하면 될 것 같다. 
+        data = client_socket.recv(1024) # 식물 센서에 이용되는 음악종류 1 
+        if data.decode() == "q":  # 마스터 라즈베리파이로부터 "q" 수신
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/audio/file.mp3")  # Bluetooth 스피커 연결 및 오디오 파일 재생
+        elif data.decode() == "w":  # 식물 센서에 이용되는 음악종류 2 
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+        elif data.decode() == "e":  # 식물 센서에 이용되는 음악종류 3 
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+        elif data.decode() == "r":  # 식물 센서에 이용되는 음악종류 4 
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+        elif data.decode() == "t":  # 식물 센서에 이용되는 음악종류 5
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+        elif data.decode() == "y":  # 식물 센서에 이용되는 음악종류 6
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+        elif data.decode() == "u":  # 식물 센서에 이용되는 음악종류 7
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생                                                
+        elif data.decode() == "i":  # 마스터 라즈베리파이로부터 인터럽트 수신
+            stop_process()  # 현재 재생중인 오디오 파일 종료
+            play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+
+# 인터럽트 시그널 핸들러 함수\
+# 몇초까지 버틸 수 있는걸까?? , 한 음악이 끝날 때 까지 재생이 가능할까?? 
+def interrupt_handler(sig, frame):
+    stop_process()  # 현재 재생중인 오디오 파일 종료
+    play_audio("/path/to/another/audio/file.mp3")  # Bluetooth 스피커 연결 및 다른 오디오 파일 재생
+
+# 인터럽트 시그널 핸들러 등록
+signal.signal(signal.SIGINT, interrupt_handler)
+
+# Bluetooth 스피커 연결 및 오디오 파일 재생 명령 수신 시작
+receive_commands()
