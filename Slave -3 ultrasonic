@@ -1,0 +1,86 @@
+// Slave - 3의 초음파 코딩 
+
+#include <NewPing.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
+SoftwareSerial bluetooth(3,4);
+#define TRIGGER_PIN  12 
+#define ECHO_PIN     11  
+#define MAX_DISTANCE 200 
+#define interruptPin 2
+String text = "get out!";
+String text2 ="i'll catch you";
+LiquidCrystal_I2C lcd(0x3F,16,2); 
+unsigned long prevMillis = 0; // '시간을 추적하기 위해 업데이트도니 코드에서 선언한 변수   
+const long interval = 300;
+int textLen = text.length();
+int index = 0;  
+void setup() {
+  Serial.begin(9600); 
+  bluetooth.begin(9600);
+  Serial.println("Enter AT Commands: ");
+  lcd.init();
+  lcd.backlight();
+  lcd.print("Hellow, world!"); 
+  lcd.setCursor(3,1);
+  lcd.print("How are you?"); 
+  lcd.begin(16, 2);  
+  pinMode(interruptPin , OUTPUT);
+}
+void interrupt_handler() {
+//LCD 띄우기 
+lcd.setCursor(4,0);
+lcd.print(text.substring(index, index + 16));//shift하려고 하는것
+lcd.setCursor(5,1);
+lcd.print(text2.substring(index, index + 16));//shift하려고 하는것
+lcd.clear();
+delay(100);
+  // update the index for the next iteration
+index++;
+if (index + 16 > textLen) {
+  index = 0;
+}
+delay(100);
+}
+// 여기서 Distance 거리가 2m가 된다면 자동으로 사진으로 찍어서 라즈베리파이에 사진이 제공될 수 있도록 
+void loop() {
+NewPing sonar(TRIGGER_PIN, ECHO_PIN);  //자동으로 pinmode 설정을 처리 
+  if (bluetooth.available()) {
+    Serial.write(bluetooth.read());
+    char c = (char)bluetooth.read();
+  Serial.write(c); 
+      unsigned long currentMillis = millis();
+      if(currentMillis - prevMillis >= interval)
+      {
+        int distance = sonar.ping_cm();
+        //여기에 이제 , LCD 띄우고 
+        //요약 sonar.ping_cm()하면 초음파 센서를 트리거하여 사운드 펄스를 보내고 에코가 돌아오는 데 걸리는 시간을 측정한 다음 거리를 센티미터 단위로 반환하는 함수 호출입니다.
+        if(distance == 0){
+          Serial.println("Error: out of range");
+        }
+        if(distance < 2)// 적정한 거리를 찾아야 하는 문제가 남아있음 
+        {
+        lcd.clear();
+        bluetooth.write("object detected");
+        attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);
+        }
+        else{
+          lcd.setCursor(4,0);
+          lcd.print("Distance");  
+          lcd.setCursor(5,1);
+          lcd.print(distance);   
+          lcd.setCursor(8,1);
+          lcd.print("cm");
+          delay(100);
+        }
+        prevMillis = currentMillis;
+        lcd.clear();
+      }
+  
+    }
+    if(Serial.available()){
+    bluetooth.write(Serial.read());
+  }
+  }
+
