@@ -1,86 +1,45 @@
 # bluetooth camera 
 
+import smbus
 import os
-import smbus 
-import threading
-from bluetooth import *
-import RPi.GPIO as GPIO
 import time
 import picamera
 
-bluetooth_audio_address = "98:DA:60:02:D0:10" # bluetooth audio 주소
-port = 1 
+# I2C 인터페이스 설정
+bus = smbus.SMBus(1)
+address = 0x08  # 마스터의 I2C 주소 
+# I2C 와 관련된 주소는 뭐지??
 
-def setup():
-    # Set up a Bluetooth server
-    server_sock=BluetoothSocket(RFCOMM)
-    server_sock.bind(("",port)) 
-    server_sock.listen(1) 
-    bluetooth_audio_sock = BluetoothSocket(RFCOMM)
-    bluetooth_audio_sock.connect((bluetooth_audio_address, port))
-    # Set up the GPIO pins
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(5, GPIO.OUT) 
-    GPIO.output(5, True)
-    interrupt_pin = 2
-    bus = smbus.SMBus(1) 
-    GPIO.setup(interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP) 
-    GPIO.add_event_detect(interrupt_pin, GPIO.FALLING, callback=interrupt_handler, bouncetime=200) 
-    GPIO.setup(4, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    return server_sock, interrupt_pin 
+# GPIO 핀 설정
+gpio_pin = 18 # 핀 설정은 어떻게 하는 거야??              
+os.system("gpio export {} out".format(gpio_pin))
 
-def interrupt_handler(channel):
-    print("Interrupt detected")
+# 자동으로 사진을 찍는 함수 
+def take_picture_and_send():
     with picamera.PiCamera() as camera:
         camera.resolution = (640, 480)
         camera.start_preview()
         time.sleep(2)
-        camera.capture('image.jpg')
-        camera.stop_preview()
-    file = open("image.jpg", "rb")
-    data = file.read()
-    file.close()
-    GPIO.output(4, False) 
-    print("Waiting for connection on RFCOMM channel %d" % port)
-    client_sock, client_info = server_sock.accept()
-    print("Accepted connection from ", client_info)
-    with open("image.jpg", "rb") as image:
-        data = image.read()
-    client_sock.send(data)
-    print("Sent image")
+        camera.capture('/home/pi/Desktop/image.jpg')
+        with open('/home/pi/Desktop/image.jpg', 'rb') as f:
+            data = f.read()
+            bus.write_i2c_block_data(address, 0, list(data))
 
-def server():
-    server_sock, interrupt_pin = setup()
-    while True:
-        GPIO.add_event_detect(4, GPIO.FALLING, callback=interrupt_handler, bouncetime=200)
-        print("Waiting for a connection...")
-        client_sock, address = server_sock.accept()
-        print(f"Connection from {address}")
-        try:
-            while True:
-                data = client_sock.recv(1024)
-                if not data:
-                    break
-                # Do something with the data received
-                print(data)
-        except IOError:
-            pass
-        client_sock.close()
-    server_sock.close()
 
-def client():
-    server_sock, interrupt_pin = setup()
-    # Connect to a Bluetooth server
-    client_sock = BluetoothSocket(RFCOMM)
-    client_sock.connect((bluetooth_audio_address, port))
-    while True:
-        message = input("Enter message to send: ")
-        if message == "q":
-            break
-        client_sock.send(message.encode())
-    client_sock.close()
+# 인터럽트 발생 시 자동으로 사진을 찍고 보내는 함수
+def on_interrupt():
+    # 인터럽트가 발생했을 때의 동작을 여기에 작성합니다.
+    take_picture_and_send()
 
-t1 = threading.Thread(target=server) 
-t2 = threading.Thread(target=client) 
-t1.start()
-t2.start() 
+
+while True:
+    try:
+        # 마스터로부터 데이터를 수신
+        data = bus.read_byte(address)        
+        # 수동으로 찍는 기능이다. 수신한 데이터가 'q'인 경우에만 사진 촬영
+        elif data == ord('q'):
+            os.system("gpio -g write {} 1".format(gpio_pin))  # GPIO 핀 출력을 HIGH로 설정
+            take_picture_and_send()
+            os.system("gpio -g write {} 0".format(gpio_pin))  # GPIO 핀 출력을 LOW로 설정
+    except Exception as e:
+        print("에러 발생: ", e)
