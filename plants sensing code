@@ -1,0 +1,63 @@
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_TSL2561_U.h>
+#include <DHT.h>
+
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+int soilPin = A0;
+int gasPin = A1;
+
+Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  pinMode(soilPin, INPUT);
+  pinMode(gasPin, INPUT);
+
+  if(!tsl.begin())
+  {
+    Serial.println("TSL2561 not found");
+    while(1);
+  }
+
+  tsl.enableAutoRange(true);
+  tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);
+}
+
+void loop() {
+  delay(2000);
+  
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  float f = dht.readTemperature(true);
+
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  float soilMoisture = analogRead(soilPin);
+  float gasValue = analogRead(gasPin);
+
+  sensors_event_t event;
+  tsl.getEvent(&event);
+  if (event.light) {
+    Serial.print("Light: ");
+    Serial.print(event.light);
+    Serial.println(" lux");
+  }
+
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print("%  Temperature: ");
+  Serial.print(t);
+  Serial.println("°C ");
+  Serial.print("Soil Moisture: ");
+  Serial.println(soilMoisture);
+  Serial.print("Gas Value: ");
+  Serial.println(gasValue);
+}
