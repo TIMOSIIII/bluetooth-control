@@ -1,5 +1,7 @@
-// Slave - 3의 초음파 코딩 
-
+//이 코드도 좀 더 큰 수준의 LCD가 필요하다 
+// 이코드도 , void 에 무한으로 돌아갔을 때 작동하지 않는데 
+// if문으로 쪼개어 넣어야 작동하는 코드 
+// 그 부분 수정해야함 
 #include <NewPing.h>
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
@@ -9,61 +11,88 @@ SoftwareSerial bluetooth(3,4);
 #define ECHO_PIN     11  
 #define MAX_DISTANCE 200 
 #define interruptPin 2
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 String text = "get out!";
 String text2 ="i'll catch you";
 LiquidCrystal_I2C lcd(0x3F,16,2); 
 unsigned long prevMillis = 0; // '시간을 추적하기 위해 업데이트도니 코드에서 선언한 변수   
+unsigned long currentMillis = 0;
 const long interval = 300;
 int textLen = text.length();
 int index = 0;  
+bool interrupt_triggered = false;
+unsigned long interrupt_start_time = 0;
 void setup() {
+  attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);  
   Serial.begin(9600); 
   bluetooth.begin(9600);
   Serial.println("Enter AT Commands: ");
   lcd.init();
   lcd.backlight();
-  lcd.print("Hellow, world!"); 
-  lcd.setCursor(3,1);
-  lcd.print("How are you?"); 
-  lcd.begin(16, 2);  
-  pinMode(interruptPin , OUTPUT);
+  lcd.setCursor(0,0);
+  lcd.print("Hi this device "); 
+  lcd.setCursor(0,1);
+  lcd.print("is ultrasound"); 
+  pinMode(interruptPin , INPUT);
 }
 void interrupt_handler() {
 //LCD 띄우기 
-lcd.setCursor(4,0);
-lcd.print(text.substring(index, index + 16));//shift하려고 하는것
-lcd.setCursor(5,1);
-lcd.print(text2.substring(index, index + 16));//shift하려고 하는것
 lcd.clear();
-delay(100);
+lcd.setCursor(0,0);
+lcd.print(text.substring(index, index + 16));//shift하려고 하는것
+lcd.setCursor(0,1);
+lcd.print(text2.substring(index, index + 16));//shift하려고 하는것
+delay(400);
   // update the index for the next iteration
 index++;
 if (index + 16 > textLen) {
   index = 0;
 }
-delay(100);
+delay(400);
+interrupt_triggered = true;
+interrupt_start_time = millis();
+
 }
 // 여기서 Distance 거리가 2m가 된다면 자동으로 사진으로 찍어서 라즈베리파이에 사진이 제공될 수 있도록 
 void loop() {
-NewPing sonar(TRIGGER_PIN, ECHO_PIN);  //자동으로 pinmode 설정을 처리 
-  if (bluetooth.available()) {
-    Serial.write(bluetooth.read());
-    char c = (char)bluetooth.read();
-  Serial.write(c); 
+delay(300);
+lcd.clear();  
+if (interrupt_triggered && millis() - interrupt_start_time < 6000)   
+  //자동으로 pinmode 설정을 처리 
+// 이게 통신 기능이 작동을 안해서 그런거 혹은 이 센서가 작동을 못하는 거 둘중 하나 
+      
       unsigned long currentMillis = millis();
       if(currentMillis - prevMillis >= interval)
       {
         int distance = sonar.ping_cm();
-        //여기에 이제 , LCD 띄우고 
-        //요약 sonar.ping_cm()하면 초음파 센서를 트리거하여 사운드 펄스를 보내고 에코가 돌아오는 데 걸리는 시간을 측정한 다음 거리를 센티미터 단위로 반환하는 함수 호출입니다.
+        //여기 까지가 , 초음파 기능 설정
+          lcd.setCursor(4,0);
+          lcd.print("Distance");  
+          lcd.setCursor(5,1);
+          lcd.print(distance);   
+          lcd.setCursor(8,1);
+          lcd.print("cm");
+          delay(100); 
         if(distance == 0){
           Serial.println("Error: out of range");
         }
-        if(distance < 2)// 적정한 거리를 찾아야 하는 문제가 남아있음 
+        if(distance < 20)// 적정한 거리를 찾아야 하는 문제가 남아있음 
         {
-        lcd.clear();
         bluetooth.write("object detected");
-        attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);
+        Serial.write("object detected");
+        lcd.setCursor(4,0);
+        lcd.print(text.substring(index, index + 16));//shift하려고 하는것
+        lcd.setCursor(5,1);
+        lcd.print(text2.substring(index, index + 16));//shift하려고 하는것
+        delay(400);
+  // update the index for the next iteration
+        index++;
+        if (index + 16 > textLen) {
+        index = 0;
+        }
+        delay(400);
+        interrupt_triggered = true;
+        interrupt_start_time = millis();
         }
         else{
           lcd.setCursor(4,0);
@@ -75,12 +104,84 @@ NewPing sonar(TRIGGER_PIN, ECHO_PIN);  //자동으로 pinmode 설정을 처리
           delay(100);
         }
         prevMillis = currentMillis;
-        lcd.clear();
-      }
-  
     }
-    if(Serial.available()){
+
+
+
+  if (bluetooth.available()) {
+    lcd.clear();
+    Serial.write(bluetooth.read());
+    char c = (char)bluetooth.read();
+    Serial.write(c); 
+    // 여기까지가 , bluetooth 관련 키 설정 
+      unsigned long currentMillis = millis();
+      if(currentMillis - prevMillis >= interval)
+      {
+        int distance = sonar.ping_cm();
+        //여기에 이제 , LCD 띄우고 
+        //요약 sonar.ping_cm()하면 초음파 센서를 트리거하여 사운드 펄스를 보내고 에코가 돌아오는 데 걸리는 시간을 측정한 다음 거리를 센티미터 단위로 반환하는 함수 호출입니다.
+        if(distance == 0){
+          Serial.println("Error: out of range");
+        }
+        if(distance < 20)// 적정한 거리를 찾아야 하는 문제가 남아있음 
+        {
+        bluetooth.write("object detected");
+        }
+        else{
+          lcd.setCursor(4,0);
+          lcd.print("Distance");  
+          lcd.setCursor(5,1);
+          lcd.print(distance);   
+          lcd.setCursor(8,1);
+          lcd.print("cm");
+          delay(100);
+        }
+        prevMillis = currentMillis;
+      }
+    } // bluetooth available 종점 
+
+
+    if(Serial.available()){     
+    lcd.clear();      
     bluetooth.write(Serial.read());
-  }
-  }
+    char d = (char)Serial.read();
+    Serial.write(d); 
+    // 여기까지가 , Serial 관련 키 설정 
+      unsigned long currentMillis = millis();
+      if(currentMillis - prevMillis >= interval)
+      {
+        int distance = sonar.ping_cm();
+        //여기 까지가 , 초음파 기능 설정 
+        if(distance == 0){
+          Serial.println("Error: out of range");
+        }
+        if(distance < 20)// 적정한 거리를 찾아야 하는 문제가 남아있음 
+        {
+        bluetooth.write("object detected");
+        Serial.write("object detected");
+        lcd.setCursor(4,0);
+        lcd.print(text.substring(index, index + 16));//shift하려고 하는것
+        lcd.setCursor(5,1);
+        lcd.print(text2.substring(index, index + 16));//shift하려고 하는것
+        delay(400);
+  // update the index for the next iteration
+        index++;
+        if (index + 16 > textLen) {
+        index = 0;
+        }
+        delay(400);
+        }
+        else{
+          lcd.setCursor(4,0);
+          lcd.print("Distance");  
+          lcd.setCursor(5,1);
+          lcd.print(distance);   
+          lcd.setCursor(8,1);
+          lcd.print("cm");
+          delay(100);
+        }
+        prevMillis = currentMillis;
+    }
+   } //Serial available 종점 
+  }// end 지점 
 
