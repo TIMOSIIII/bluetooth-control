@@ -1,5 +1,4 @@
-// RTC 코딩 slave - 2 
-
+// LCD 더 큰 거 사야 기능할 수 있다. 
 #include <Wire.h>
 #include <NewPing.h>
 #include <LiquidCrystal_I2C.h>
@@ -22,7 +21,6 @@ void setup()
   RTC.adjust(DateTime(__DATE__ , __TIME__));
   Serial.begin(9600); 
   bluetooth.begin(9600);
-  Serial.println("Enter AT Commands: ");  
   lcd.init();  // LCD초기 설정             
   lcd.backlight(); // LCD초기 설정  
   lcd.setCursor(0,0); //텍스트가 LCD에 나타날 위치
@@ -30,7 +28,9 @@ void setup()
   lcd.setCursor(3,1);
   lcd.print("How are you?"); 
   pinMode(interruptPin,OUTPUT);  //자동으로 pinmode 설정을 처리 
-  lcd.begin(16, 2);   
+  attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);
+  lcd.begin(16, 2);  
+  Serial.println("Enter AT Commands: ");     
 }
 
 void interrupt_handler() {
@@ -45,16 +45,63 @@ if (index + 16 > textLen) {
   index = 0;
 }
 }
-void timer (void)
-{
-
-
-
-}
 
 void loop()  {
+  // AT 명령어를 넣기 위해 하려고 하는 설정  
+  if (bluetooth.available()) 
+  {  // 여기서 안들어가면 그럴 수도 있음
   char c;
-  //timer();
+  c = (char)bluetooth.read();
+  Serial.write(c);
+  if( c=='b')
+  {
+  lcd.clear();  
+  lcd.setCursor(1,0);
+  lcd.print("water the plants day is");
+  lcd.setCursor(1,1);
+  lcd.print("Sunday , and Wedensday");
+  delay(2000);  
+  lcd.clear();
+  }
+  else if (c=='c') 
+  {
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("this plants name is ");
+  lcd.setCursor(1,1);
+  lcd.print("cactus");  
+  delay(2000);
+  lcd.clear();
+  }    //식물 설명   
+  }  
+//AT 명령어 외에 시범용 기능 
+  if (Serial.available()) {
+  char d;
+  d = (char)Serial.read();
+  Serial.write(d);    
+  bluetooth.write(Serial.read());
+    if( d=='b')
+  {
+  lcd.clear();  
+  lcd.setCursor(1,0);
+  lcd.print("water the plants day is");
+  lcd.setCursor(1,1);
+  lcd.print("Sunday and Wed");
+  delay(2000);  
+  lcd.clear();  
+  }
+  else if (d=='c') 
+  {
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("this plants name is");
+  lcd.setCursor(1,1);
+  lcd.print("cactus");  
+  delay(2000);
+  lcd.clear();  
+  }
+  }  
+// RTC LCD 에 넣으려고 하는 설정 
   DateTime now = RTC.now();                       // 시간을 읽어옴
   lcd.setCursor(1,0);
   lcd.print(now.year(), DEC);                  // 시리얼모니터에 출력
@@ -93,22 +140,5 @@ void loop()  {
     case 6:
       lcd.print("Sat");
       break;
-  }
-  if (bluetooth.available()) 
-  {  // 여기서 안들어가면 그럴 수도 있음
-  c = (char)bluetooth.read();
-  Serial.write(c);
-  attachInterrupt(digitalPinToInterrupt(interruptPin), interrupt_handler, FALLING);    
-  } // 이제 고민해야 할 것은 , 초단위 혹은 얼마나 머무는가?
-  else if( c=='b')
-  {
-  lcd.clear();  
-  lcd.setCursor(1,0);
-  lcd.print("water the plants day is");
-  lcd.setCursor(1,1);
-  lcd.print("Sunday , and Wedensday");  
-  }
-  if (Serial.available()) {
-    bluetooth.write(Serial.read());
   }
 }
