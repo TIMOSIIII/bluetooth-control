@@ -1,9 +1,11 @@
-#bluetooth 기능 추가로 넣어야 된다. 
-
+// 블루투스 세팅 추가로 해야 된다. 
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_TSL2561_U.h>
 #include <DHT.h>
+#include <SoftwareSerial.h>
+SoftwareSerial bluetooth(4,5);
+
 
 #define DHTPIN 2
 #define DHTTYPE DHT11
@@ -16,6 +18,8 @@ Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 1234
 
 void setup() {
   Serial.begin(9600);
+  bluetooth.begin(9600);
+  Serial.println("Enter AT Commands: ");  
   dht.begin();
   pinMode(soilPin, INPUT);
   pinMode(gasPin, INPUT);
@@ -31,23 +35,31 @@ void setup() {
 }
 
 void loop() {
+// AT 명령어 넣을려고 넣은 코드 
+if (bluetooth.available()) {  // 여기서 안들어가면 그럴 수도 있음
+bluetooth.write(Serial.read());
+}
+if (Serial.available()){
+Serial.write(bluetooth.read());
+}  
   delay(2000);
-  
   float h = dht.readHumidity();
   float t = dht.readTemperature();
   float f = dht.readTemperature(true);
 
+// 데이터 읽어왔을 때 실패하면 나타나는 실이ㅓㄹ 
   if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println("Failed to read from DHT sensor!");
     return;
   }
-
+# 땅 수분과 가스값은 아날로그 핀에 설치해야 한다. 
   float soilMoisture = analogRead(soilPin);
   float gasValue = analogRead(gasPin);
 
-  sensors_event_t event;
-  tsl.getEvent(&event);
-  if (event.light) {
+
+  sensors_event_t event;  //데이터를 읽어오는 것을 선언 
+  tsl.getEvent(&event); // 데이터를 저장
+  if (event.light) { 
     Serial.print("Light: ");
     Serial.print(event.light);
     Serial.println(" lux");
@@ -62,4 +74,16 @@ void loop() {
   Serial.println(soilMoisture);
   Serial.print("Gas Value: ");
   Serial.println(gasValue);
+
+  // 여기서 블루투스 통신을 통해 정보 전송 
+
+  bluetooth.print("Humidity: ");
+  bluetooth.print(h);
+  bluetooth.print("%  Temperature: ");
+  bluetooth.print(t);
+  bluetooth.println("°C ");
+  bluetooth.print("Soil Moisture: ");
+  bluetooth.println(soilMoisture);
+  bluetooth.print("Gas Value: ");
+  bluetooth.println(gasValue);
 }
