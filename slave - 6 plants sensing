@@ -36,9 +36,9 @@ void setup() {
     Serial.println("TSL2561 not found");
     while(1);
   }
-
-  tsl.enableAutoRange(true);
-  tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);
+// 광량센서 초기화하고 설정 코드 
+  tsl.enableAutoRange(true); // 자동으로 측정 범위 조절
+  tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);//센서 측정시간 설정 //13ms로 설정(데이터처리시간 )
 }
 
 void loop() {
