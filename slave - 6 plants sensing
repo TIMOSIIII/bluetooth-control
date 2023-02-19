@@ -5,12 +5,19 @@
 #include <DHT.h>
 #include <SoftwareSerial.h>
 SoftwareSerial bluetooth(4,5);
-
-
 #define DHTPIN 2
 #define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
 
+
+/*
+DHT11 온습도 센서: 디지털 핀 2번
+TSL2561 광량 센서: I2C 통신 사용 (Wire 라이브러리에서 사용하는 핀)
+아날로그 땅 수분 센서: 아날로그 핀 A0번
+아날로그 가스 센서: 아날로그 핀 A1번
+*/
+
+
+DHT dht(DHTPIN, DHTTYPE);
 int soilPin = A0;
 int gasPin = A1;
 
@@ -47,15 +54,9 @@ Serial.write(bluetooth.read());
   float t = dht.readTemperature();
   float f = dht.readTemperature(true);
 
-// 데이터 읽어왔을 때 실패하면 나타나는 실이ㅓㄹ 
-  if (isnan(h) || isnan(t) || isnan(f)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
 # 땅 수분과 가스값은 아날로그 핀에 설치해야 한다. 
   float soilMoisture = analogRead(soilPin);
-  float gasValue = analogRead(gasPin);
-
+  float gasValue = analogRead(gasPin);  
 
   sensors_event_t event;  //데이터를 읽어오는 것을 선언 
   tsl.getEvent(&event); // 데이터를 저장
@@ -63,6 +64,12 @@ Serial.write(bluetooth.read());
     Serial.print("Light: ");
     Serial.print(event.light);
     Serial.println(" lux");
+  }
+
+// 데이터 읽어왔을 때 실패하면 나타나는 실이ㅓㄹ 
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
   }
 
   Serial.print("Humidity: ");
